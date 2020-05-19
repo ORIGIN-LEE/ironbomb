@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<canvas id="canvas" width=960 height="832" style="border: 1px solid red"></canvas>
+<script>
+    var cv, cx;
+    var bombMan, bombEnemy;
+    var gameLoop;
+    var imgBomb, imgItemBlock, imgNormalBlock, imgItem;
+    var imgBomb_C, imgBomb_L, imgBomb_U, imgBomb_R, imgBomb_D;
+    var ironIndex, enemyIndex;
+    var spacePress, shiftPress;
+    var keyPressed = new Array();
+    var R;
+
+    var map = [
+        [8, 8, R, 6, R, R, 8, 8, 8, R, R, 6, R, 8, 8],
+        [8, 7, R, 7, R, 7, 8, 7, 8, 7, R, 7, R, 7, 8],
+        [R, R, R, R, R, R, R, R, R, R, R, R, R, R, R],
+        [6, 7, R, 7, R, 7, R, 7, R, 7, R, 7, R, 7, 6],
+        [R, R, R, R, R, R, R, R, R, R, R, R, R, R, R],
+        [8, 7, R, 7, R, 7, R, 7, R, 7, R, 7, R, 7, 8],
+        [8, 8, R, R, R, R, R, R, R, R, R, R, R, 8, 8],
+        [8, 7, R, 7, R, 7, R, 7, R, 7, R, 7, R, 7, 8],
+        [R, R, R, R, R, R, R, R, R, R, R, R, R, R, R],
+        [6, 7, R, 7, R, 7, R, 7, R, 7, R, 7, R, 7, 6],
+        [R, R, R, R, R, R, R, R, R, R, R, R, R, R, R],
+        [8, 7, R, 7, R, 7, 8, 7, 8, 7, R, 7, R, 7, 8],
+        [8, 8, R, 6, R, R, 8, 8, 8, R, R, 6, R, 8, 8]
+    ];
+
+    window.addEventListener('load', init, false);
+
+    function init() {
+        cv = document.getElementById("canvas");
+        cx = cv.getContext("2d");
+
+        InitElement();
+        MakeItem();
+        bombMan = new fBombMan(512, 0, "Ironman", ironIndex, "red");
+        bombEnemy = new fBombMan(512, 768, "enemyman", enemyIndex, "blue");
+
+        gameLoop = setInterval(bombGame, 33);
+    }
+
+    function InitElement() {
+        ironIndex = enemyIndex = 0;
+        spacePress = shiftPress = false;
+        imgBomb = new Image();
+        imgItemBlock = new Image();
+        imgNormalBlock = new Image();
+        imgItem = new Image();
+        imgBomb_C = new Image();
+        imgBomb_U = new Image();
+        imgBomb_D = new Image();
+        imgBomb_L = new Image();
+        imgBomb_R = new Image();
+        imgBomb.src = "images/bomb.png";
+        imgItemBlock.src = "images/itemblock.png";
+        imgNormalBlock.src = "images/nomalblock.png";
+        imgItem.src = "images/item.png";
+        imgBomb_C.src = "images/bomb_C.png";
+        imgBomb_U.src = "images/bomb_U.png";
+        imgBomb_D.src = "images/bomb_D.png";
+        imgBomb_L.src = "images/bomb_L.png";
+        imgBomb_R.src = "images/bomb_R.png";
+    }
+
+    function MakeItem() {
+        for (y = 0; y < 13; y++) {
+            for (x = 0; x < 15; x++) {
+                if ( map[y][x] == R ) {
+                    var Random = Math.random();
+                    if ( Random < 0.2 ) {
+                        map[y][x] = 13;
+                    }
+                    else {
+                        map[y][x] = 5;
+                    }
+                }
+            }
+        }
+    }
+
+    function fBombMan(_x, _y, _string, _index, _own) {
+        this.x = _x;
+        this.y = _y;
+        this.imgMan = new Array();
+        this.index = _index
+        this.power = 1;
+        this.own = _own;
+        this.init(_string);
+    }
+
+    fBombMan.prototype.init = function (_string) {
+        var img;
+        for (i = 0; i < 4; i++) {
+            img = new Image();
+            img.src = "images/" + _string + i + ".png";
+            this.imgMan.push(img);
+        }
+    }
+
+    fBombMan.prototype.draw = function () {
+        cx.drawImage(this.imgMan[this.index], this.x, this.y);
+    }
+
+    fBombMan.prototype.move = function (_x, _y) {
+        this.x += _x;
+        this.y += _y;
+        if (this.x <= 0)
+            this.x = 0;
+        else if (this.x >= cv.width - 64)
+            this.x = cv.width - 64;
+        if (this.y <= 0)
+            this.y = 0;
+        else if (this.y >= cv.height - 64)
+            this.y = cv.height - 64;
+    }
+
+    fBombMan.prototype.check = function () {
+        if (Math.floor(this.y / 64) == this.y / 64 && Math.floor(this.x / 64) == this.x / 64) {
+            if (map[this.y / 64][this.x / 64].isPass == true) {
+                map[this.y / 64][this.x / 64].isPass = false;
+            }
+        }
+
+        if (map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 3 || map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 10 ||
+            map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 11 || map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 12 ||
+            map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 14 || map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 15 ||
+            map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 16 || map[Math.round(this.y / 64)][Math.round(this.x / 64)] == 17 ||
+            map[Math.round(this.y / 64)][Math.round(this.x / 64)].isBomb) {
+            YouDie(this.own);
+        }
+    }
+
+    function fBomb(_x, _y, _index, _power) {
+        this.x = _x;
+        this.y = _y;
+        this.power = _power;
+        this.isPass = false;
+        this.isBomb = false;
+        this.init(_index);
+    }
+
+    fBomb.prototype.init = function (_index) {
+        map[Math.round(this.y / 64)][Math.round(this.x / 64)] = this;
+        if (Math.round(this.x / 64) > this.x / 64 && _index == 3) {
+            this.isPass = true;
+        } else if (Math.round(this.x / 64) < this.x / 64 && _index == 2) {
+            this.isPass = true;
+        } else if (Math.round(this.y / 64) < this.y / 64 && _index == 1) {
+            this.isPass = true;
+        } else if (Math.round(this.y / 64) > this.y / 64 && _index == 0) {
+            this.isPass = true;
+        }
+        this._setTimeout1 = setTimeout(this.boooom.bind(this), 3000);
+    }
+
+    fBomb.prototype.boooom = function () {
+        this.isBomb = true;
+        //map[Math.round(this.y / 64)][Math.round(this.x / 64)] = 3;
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (typeof map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == "object" &&
+                    !map[Math.round(this.y / 64)][Math.round(this.x / 64) - i].isBomb)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i].boooom();
+                else if (map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 5) {
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] = 11;
+                    break;
+                } else if (map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 13) {
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] = 16;
+                    break;
+                } else if (!(map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 3) &&
+                    !(map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 6) &&
+                    !(map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 7))
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] = 11;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (typeof map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == "object" &&
+                    !map[Math.round(this.y / 64) - i][Math.round(this.x / 64)].isBomb)
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)].boooom();
+                else if (map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 5) {
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] = 3;
+                    break;
+                } else if(map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 13) {
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] = 14;
+                    break;
+                } else if (!(map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 3) &&
+                    !(map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 6) &&
+                    !(map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 7))
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] = 3;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (typeof map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == "object" &&
+                    !map[Math.round(this.y / 64)][Math.round(this.x / 64) + i].isBomb)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i].boooom();
+                else if (map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 5) {
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] = 12;
+                    break;
+                } else if(map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 13) {
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] = 17;
+                    break;
+                } else if (!(map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 3) &&
+                    !(map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 6) &&
+                    !(map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 7))
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] = 12;
+                else
+                    break;
+            } catch (e) {
+            } finally {
+                if (map[Math.round(this.y / 64)].length > 15) map[Math.round(this.y / 64)].pop();
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (typeof map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == "object" &&
+                    !map[Math.round(this.y / 64) + i][Math.round(this.x / 64)].isBomb)
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)].boooom();
+                else if (map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 5) {
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] = 10;
+                    break;
+                } else if(map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 13) {
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] = 15;
+                    break;
+                } else if (!(map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 3) &&
+                    !(map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 6) &&
+                    !(map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 7))
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] = 10;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+
+        this._setTimeout2 = setTimeout(this.bombBomb.bind(this), 500);
+    }
+
+    fBomb.prototype.bombBomb = function () {
+        clearTimeout(this._setTimeout1);
+        clearTimeout(this._setTimeout2);
+        map[Math.round(this.y / 64)][Math.round(this.x / 64)] = 8;
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 11)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] = 8;
+                else if(map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] == 16)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) - i] = 4;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 3)
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] = 8;
+                else if (map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] == 14)
+                    map[Math.round(this.y / 64) - i][Math.round(this.x / 64)] = 4;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 12)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] = 8;
+                else if (map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] == 17)
+                    map[Math.round(this.y / 64)][Math.round(this.x / 64) + i] = 4;
+                else
+                    break;
+            } catch (e) {
+            } finally {
+                if (map[Math.round(this.y / 64)].length > 15) map[Math.round(this.y / 64)].pop();
+            }
+        }
+        for(var i = 1; i <= this.power; i++) {
+            try {
+                if (map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 10)
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] = 8;
+                else if (map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] == 15)
+                    map[Math.round(this.y / 64) + i][Math.round(this.x / 64)] = 4;
+                else
+                    break;
+            } catch (e) {
+            }
+        }
+    }
+
+    function bombGame() {
+        cx.save();
+        cx.clearRect(0, 0, cv.width, cv.height);
+
+        DrawMap();
+        Update();
+        Render();
+
+        cx.restore();
+    }
+
+    function DrawMap() {
+        for (y = 0; y < 13; y++) {
+            for (x = 0; x < 15; x++) {
+                switch (true) {
+                    case map[y][x] == 0:
+                        //cx.drawImage(imgBomb, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 1:
+                        break;
+                    case map[y][x].isBomb == true:
+                        cx.drawImage(imgBomb_C, x * 64, y * 64);
+                        break;
+                    case typeof map[y][x] == "object":
+                        cx.drawImage(imgBomb, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 3:
+                        cx.drawImage(imgBomb_U, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 4:
+                        cx.drawImage(imgItem, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 5:
+                        cx.drawImage(imgNormalBlock, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 6:
+                        cx.drawImage(imgItemBlock, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 7:
+                        cx.drawImage(imgItemBlock,x *64, y * 64);
+                        break;
+                    case map[y][x] == 8:
+                        break;
+                    case map[y][x] == 10:
+                        cx.drawImage(imgBomb_D, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 11:
+                        cx.drawImage(imgBomb_L, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 12:
+                        cx.drawImage(imgBomb_R, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 13:
+                        cx.drawImage(imgNormalBlock, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 14:
+                        cx.drawImage(imgBomb_U, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 15:
+                        cx.drawImage(imgBomb_D, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 16:
+                        cx.drawImage(imgBomb_L, x * 64, y * 64);
+                        break;
+                    case map[y][x] == 17:
+                        cx.drawImage(imgBomb_R, x * 64, y * 64);
+                        break;
+                    default :
+                        break;
+                }
+            }
+        }
+    }
+
+    function Render() {
+        //makeBomb();
+        bombMan.check();
+        bombMan.draw();
+        bombEnemy.check();
+        bombEnemy.draw();
+    }
+
+    window.onkeydown = function (e) {
+        keyPressed[e.keyCode] = true;
+    }
+
+    window.onkeyup = function (e) {
+        keyPressed[e.keyCode] = false;
+    }
+
+    function Update() {
+        try {
+            if (keyPressed[38]) {
+                bombMan.index = 1;
+                if (((map[Math.floor((bombMan.y - 8) / 64)][Math.floor(bombMan.x / 64)] == 8) &&
+                    (map[Math.floor((bombMan.y - 8) / 64)][Math.floor((bombMan.x + 63) / 64)] == 8)) ||
+                    ((map[Math.floor((bombMan.y - 8) / 64)][Math.floor(bombMan.x / 64)].isPass == true) &&
+                        (map[Math.floor((bombMan.y - 8) / 64)][Math.floor((bombMan.x + 63) / 64)].isPass == true)) ||
+                    ((map[Math.floor((bombMan.y - 8) / 64)][Math.floor(bombMan.x / 64)] == 3) &&
+                        (map[Math.floor((bombMan.y - 8) / 64)][Math.floor((bombMan.x + 63) / 64)] == 3)) ||
+                    ((map[Math.floor((bombMan.y - 8) / 64)][Math.floor(bombMan.x / 64)] == 4) &&
+                        (map[Math.floor((bombMan.y - 8) / 64)][Math.floor((bombMan.x + 63) / 64)] == 4)))
+                    bombMan.move(0, -8);
+                if (map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] == 4) {
+                    bombMan.power += 1;
+                    map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] = 8;
+                }
+            }
+            if (keyPressed[40]) {
+                bombMan.index = 0;
+                if (((map[Math.floor((bombMan.y + 64) / 64)][Math.floor(bombMan.x / 64)] == 8) &&
+                    (map[Math.floor((bombMan.y + 64) / 64)][Math.floor((bombMan.x + 63) / 64)] == 8)) ||
+                    ((map[Math.floor((bombMan.y + 64) / 64)][Math.floor(bombMan.x / 64)].isPass == true) &&
+                        (map[Math.floor((bombMan.y + 64) / 64)][Math.floor((bombMan.x + 63) / 64)].isPass == true)) ||
+                    ((map[Math.floor((bombMan.y + 64) / 64)][Math.floor(bombMan.x / 64)] == 3) &&
+                        (map[Math.floor((bombMan.y + 64) / 64)][Math.floor((bombMan.x + 63) / 64)] == 3)) ||
+                    ((map[Math.floor((bombMan.y + 64) / 64)][Math.floor(bombMan.x / 64)] == 4) &&
+                        (map[Math.floor((bombMan.y + 64) / 64)][Math.floor((bombMan.x + 63) / 64)] == 4)))
+                    bombMan.move(0, 8);
+                if (map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] == 4) {
+                    bombMan.power += 1;
+                    map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] = 8;
+                }
+            }
+
+            if (keyPressed[39]) {
+                bombMan.index = 3;
+                if (((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x + 64) / 64)] == 8) &&
+                    (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x + 64) / 64)] == 8)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x + 64) / 64)].isPass == true) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x + 64) / 64)].isPass == true)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x + 64) / 64)] == 3) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x + 64) / 64)] == 3)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x + 64) / 64)] == 4) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x + 64) / 64)] == 4)))
+                    bombMan.move(8, 0);
+                if (map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] == 4) {
+                    bombMan.power += 1;
+                    map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] = 8;
+                }
+            }
+            if (keyPressed[37]) {
+                bombMan.index = 2;
+                if (((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x - 8) / 64)] == 8) &&
+                    (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x - 8) / 64)] == 8)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x - 8) / 64)].isPass == true) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x - 8) / 64)].isPass == true)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x - 8) / 64)] == 3) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x - 8) / 64)] == 3)) ||
+                    ((map[Math.floor(bombMan.y / 64)][Math.floor((bombMan.x - 8) / 64)] == 4) &&
+                        (map[Math.floor((bombMan.y + 63) / 64)][Math.floor((bombMan.x - 8) / 64)] == 4)))
+                    bombMan.move(-8, 0);
+                if (map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] == 4) {
+                    bombMan.power += 1;
+                    map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] = 8;
+                }
+            }
+
+            //2P
+            if (keyPressed[87]) {
+                bombEnemy.index = 1;
+                if (((map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor(bombEnemy.x / 64)] == 8) &&
+                    (map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 8)) ||
+                    ((map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor(bombEnemy.x / 64)].isPass == true) &&
+                        (map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor((bombEnemy.x + 63) / 64)].isPass == true)) ||
+                    ((map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor(bombEnemy.x / 64)] == 3) &&
+                        (map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 3)) ||
+                    ((map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor(bombEnemy.x / 64)] == 4) &&
+                        (map[Math.floor((bombEnemy.y - 8) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 4)))
+                    bombEnemy.move(0, -8);
+                if (map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] == 4) {
+                    bombEnemy.power += 1;
+                    map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] = 8;
+                }
+            }
+            if (keyPressed[83]) {
+                bombEnemy.index = 0;
+                if (((map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor(bombEnemy.x / 64)] == 8) &&
+                    (map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 8)) ||
+                    ((map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor(bombEnemy.x / 64)].isPass == true) &&
+                        (map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor((bombEnemy.x + 63) / 64)].isPass == true)) ||
+                    ((map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor(bombEnemy.x / 64)] == 3) &&
+                        (map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 3)) ||
+                    ((map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor(bombEnemy.x / 64)] == 4) &&
+                        (map[Math.floor((bombEnemy.y + 64) / 64)][Math.floor((bombEnemy.x + 63) / 64)] == 4)))
+                    bombEnemy.move(0, 8);
+                if (map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] == 4) {
+                    bombEnemy.power += 1;
+                    map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] = 8;
+                }
+            }
+
+            if (keyPressed[68]) {
+                bombEnemy.index = 3;
+                if (((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 8) &&
+                    (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 8)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x + 64) / 64)].isPass == true) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x + 64) / 64)].isPass == true)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 3) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 3)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 4) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x + 64) / 64)] == 4)))
+                    bombEnemy.move(8, 0);
+                if (map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] == 4) {
+                    bombEnemy.power += 1;
+                    map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] = 8;
+                }
+            }
+            if (keyPressed[65]) {
+                bombEnemy.index = 2;
+                if (((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 8) &&
+                    (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 8)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x - 8) / 64)].isPass == true) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x - 8) / 64)].isPass == true)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 3) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 3)) ||
+                    ((map[Math.floor(bombEnemy.y / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 4) &&
+                        (map[Math.floor((bombEnemy.y + 63) / 64)][Math.floor((bombEnemy.x - 8) / 64)] == 4)))
+                    bombEnemy.move(-8, 0);
+                if (map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] == 4) {
+                    bombEnemy.power += 1;
+                    map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] = 8;
+                }
+            }
+        } catch (e) {
+            console.error("log", e);
+        }
+
+        //1P 폭탄
+        if (keyPressed[32]) {
+            if (!spacePress && map[Math.round(bombMan.y / 64)][Math.round(bombMan.x / 64)] == 8) {
+                spacePress = true;
+                var bomb = new fBomb(bombMan.x, bombMan.y, bombMan.index, bombMan.power);
+            }
+        } else {
+            spacePress = false;
+        }
+
+        //2P 폭탄
+        if (keyPressed[16]) {
+            if (!shiftPress && map[Math.round(bombEnemy.y / 64)][Math.round(bombEnemy.x / 64)] == 8) {
+                shiftPress = true;
+                var bomb = new fBomb(bombEnemy.x, bombEnemy.y, bombEnemy.index, bombEnemy.power);
+            }
+        } else {
+            shiftPress = false;
+        }
+    }	
+
+    function YouDie(_own) {
+        clearInterval(gameLoop);
+        cx.save();
+        cx.globalAlpha = 0.7;
+        cx.fillStyle = "white";
+        cx.fillRect(360, 250, 300, 300);
+        cx.restore();
+        cx.font = 'italic 40px Calibri';
+        cx.fillText("Game over", cv.width / 2 - 70, cv.height / 2 - 100);
+        if(_own == "red") {
+            cx.fillStyle = "blue";
+            cx.fillText("파랑 승", cv.width / 2 - 50, cv.height / 2);
+			cx.fillText("Restart to F5", cv.width / 2 - 80, cv.height / 2 + 100);
+        } else {
+            cx.fillStyle = "red";
+            cx.fillText("빨강 승", cv.width / 2 - 50, cv.height / 2);
+			cx.fillText("Restart to F5", cv.width / 2 - 80, cv.height / 2 + 100);
+        }		
+    }
+</script>
+</body>
+</html>
